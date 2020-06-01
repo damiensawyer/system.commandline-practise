@@ -1,12 +1,19 @@
 ﻿using System;
+using System.IO;
 
 namespace basiccommandline
 {
     class Program
     {
-        static void Main(string[] args)
+
+        /// <summary>
+        /// DragonFruit simple example program
+        /// </summary>
+        /// <param name="intOption">Pass in a number</param>
+        static int Main(int intOption)
         {
-            Console.WriteLine("Hello World!");
+            Console.WriteLine($"option {intOption}");
+            return 0;
         }
     }
 }
