@@ -7,11 +7,9 @@
 
 async Task Main()
 {
-	var currentFolder = $"{Path.GetDirectoryName(Util.CurrentQueryPath)}";
-	currentFolder.Dump();
-	
 	await Demos.one_helloCommandLine();
 	await Demos.two_complexType();
+	await Demos.three_typesWithStringConstructor();
 	
 }
 
@@ -34,7 +32,7 @@ public static class Demos
 			(string aString, int anInt, System.IO.FileAttributes anEnum, bool aBool, string[] items, int anIntWithAliases ) =>
 			{
 				var itemString = items.Aggregate(new StringBuilder(), (a, b) => a.Append(", " + b));
-				$"{aString}, {anInt}, {anEnum}, {aBool}, items: {itemString} aliased int: {anIntWithAliases}".Dump("One");
+				$"{aString}, {anInt}, {anEnum}, {aBool}, items: {itemString} aliased int: {anIntWithAliases}".Dump("One: hello");
 
 			});
 
@@ -52,25 +50,30 @@ public static class Demos
 		 command.Handler = CommandHandler.Create(
         (ComplexType complexType) =>
 		{
-			$"string: {complexType.AString}, int: {complexType.AnInt}".Dump("complex type");
+			$"string: {complexType.AString}, int: {complexType.AnInt}".Dump("Two: complex type");
 		});
 		await command.InvokeAsync("--an-int 423 --a-string \"Hello world!\" ");
 	}
 
-	public static async Task three_fileSystemTypes()
+	public static async Task three_typesWithStringConstructor()
 	{
 		var command = new RootCommand
 			{
-				new Option("--a-string") { Argument = new Argument<string>() },
-				new Option("--an-int") { Argument = new Argument<int>() }
+				 new Option("-d") { Argument = new Argument<DirectoryInfo>().ExistingOnly() },
+				 	 new Option("--custom-object-message") { Argument = new Argument<MyCustomClass>() }
 			};
 
 		command.Handler = CommandHandler.Create(
-	   (ComplexType complexType) =>
+	   (DirectoryInfo d, MyCustomClass customObjectMessage) =>
 	   {
-		   $"string: {complexType.AString}, int: {complexType.AnInt}".Dump("Two");
+		   Directory.GetFiles(d.FullName).Dump("Three 1: files in directory");
+		   customObjectMessage.Message.Dump("Three 2: string passed as constructor to custom object");
 	   });
-		await command.InvokeAsync("--an-int 423 --a-string \"Hello world!\" ");
+
+		var currentFolder = $"{Path.GetDirectoryName(Util.CurrentQueryPath)}";
+		await command.InvokeAsync($"-d {currentFolder} --custom-object-message \"hello how are you today?\"");
+		
+		//await command.InvokeAsync(@"-d c://temp/");
 	}
 
 }
@@ -79,4 +82,14 @@ public class ComplexType
 {
 	public int AnInt { get; set; }
 	public string AString { get; set; }
+}
+
+public class MyCustomClass
+{ 
+	public string Message { get; set; }
+	
+	public MyCustomClass(string message)
+	{
+		this.Message = message;
+	}
 }
