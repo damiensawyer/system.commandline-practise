@@ -16,7 +16,7 @@ async Task Main()
 	//await Demos.two_complexType();
 	//await Demos.three_typesWithStringConstructor();
 	await Demos.four_moreComplex();
-	await Demos.five_methodFirstApproach();
+	//await Demos.five_methodFirstApproach();
 	
 }
 
@@ -94,18 +94,43 @@ public static class Demos
 	{
 
 		// todo. Add sub commands. 
-		var rootCommand = new RootCommand() { Description = "Converts an image file from one format to another.", TreatUnmatchedTokensAsErrors = true};
+		var rootCommand = new RootCommand() { Description = "Displays Name and Age", TreatUnmatchedTokensAsErrors = true};
 		rootCommand.AddOption(new Option(aliases: new string[] { "--name", "-n" }) { Description = "Your Name.", Argument = new Argument<string>() });
 		rootCommand.AddOption(new Option(aliases: new string[] { "--age", "-a" }) { Description = "Your Age", Argument = new Argument<int>() });
-
 		rootCommand.Handler = CommandHandler.Create<string, int>(Convert);
 
-		var r = await rootCommand.InvokeAsync("-n damien -a 46");
+
+		var subCommand = new Command("Add") {Description = "Adds Numbers"};
+		subCommand.AddOption(new Option(aliases: new string[] { "--first", "-a" }) { Description = "First Number", Argument = new Argument<int>() });
+		subCommand.AddOption(new Option(aliases: new string[] { "--second", "-b" }) { Description = "Second Number", Argument = new Argument<int>() });
+		subCommand.Handler = CommandHandler.Create<int,int> (Add);
+		rootCommand.AddCommand(subCommand);
+
+		var subCommand2 = new Command("Subtract") { Description = "Adds Numbers" };
+		subCommand2.AddOption(new Option(aliases: new string[] { "--first", "-a" }) { Description = "First Number", Argument = new Argument<int>() });
+		subCommand2.AddOption(new Option(aliases: new string[] { "--second", "-b" }) { Description = "Second Number", Argument = new Argument<int>() });
+		subCommand2.Handler = CommandHandler.Create<int, int>(Subtract);
+		rootCommand.AddCommand(subCommand2);
+
+
+		var r = await rootCommand.InvokeAsync("-n damien -a 46"); // r returns 0 for good
+		await rootCommand.InvokeAsync("Add -a 10 -b 20");
+		await rootCommand.InvokeAsync("Subtract -a 100 -b 20");
 	}
 
 	static public void Convert(string name, int age)
 	{
 		$"{name} {age}".Dump("Four: more complex");
+	}
+
+	static public void Add(int first, int second)
+	{
+		$"{first}+{second} = {first + second}".Dump("Four: more complex");
+	}
+
+	static public void Subtract(int first, int second)
+	{
+		$"{first}-{second} = {first - second}".Dump("Four: more complex");
 	}
 
 
