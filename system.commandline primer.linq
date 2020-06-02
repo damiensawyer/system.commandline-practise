@@ -99,11 +99,10 @@ public static class Demos
 		rootCommand.AddOption(new Option(aliases: new string[] { "--age", "-a" }) { Description = "Your Age", Argument = new Argument<int>() });
 		rootCommand.Handler = CommandHandler.Create<string, int>(Convert);
 
-
 		var subCommand = new Command("Add") {Description = "Adds Numbers"};
 		subCommand.AddOption(new Option(aliases: new string[] { "--first", "-a" }) { Description = "First Number", Argument = new Argument<int>() });
 		subCommand.AddOption(new Option(aliases: new string[] { "--second", "-b" }) { Description = "Second Number", Argument = new Argument<int>() });
-		subCommand.Handler = CommandHandler.Create<int,int> (Add);
+		subCommand.Handler = CommandHandler.Create<int,int> (AddAsync);
 		rootCommand.AddCommand(subCommand);
 
 		var subCommand2 = new Command("Subtract") { Description = "Adds Numbers" };
@@ -112,10 +111,8 @@ public static class Demos
 		subCommand2.Handler = CommandHandler.Create<int, int>(Subtract);
 		rootCommand.AddCommand(subCommand2);
 
-
 		var r = await rootCommand.InvokeAsync("-n damien -a 46"); // r returns 0 for good
-		await rootCommand.InvokeAsync("Add -a 10 -b 20");
-		await rootCommand.InvokeAsync("Subtract -a 100 -b 20");
+		await Task.WhenAll(rootCommand.InvokeAsync("Add -a 10 -b 20"), rootCommand.InvokeAsync("Subtract -a 100 -b 20"));
 	}
 
 	static public void Convert(string name, int age)
@@ -123,14 +120,15 @@ public static class Demos
 		$"{name} {age}".Dump("Four: more complex");
 	}
 
-	static public void Add(int first, int second)
+	static public async Task AddAsync(int first, int second)
 	{
-		$"{first}+{second} = {first + second}".Dump("Four: more complex");
+		await Task.Delay(1000);
+		$"{first}+{second} = {first + second}".Dump("Four (add): more complex");
 	}
 
 	static public void Subtract(int first, int second)
 	{
-		$"{first}-{second} = {first - second}".Dump("Four: more complex");
+		$"{first}-{second} = {first - second}".Dump("Four (subtract): more complex");
 	}
 
 
