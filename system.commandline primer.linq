@@ -3,6 +3,8 @@
   <Namespace>System.Threading.Tasks</Namespace>
   <Namespace>System.CommandLine</Namespace>
   <Namespace>System.CommandLine.Invocation</Namespace>
+  <Namespace>System.CommandLine.Binding</Namespace>
+  <Namespace>System.CommandLine.Parsing</Namespace>
 </Query>
 
 async Task Main()
@@ -10,9 +12,11 @@ async Task Main()
 	// https://github.com/dotnet/command-line-api
 	// https://docs.microsoft.com/en-us/archive/msdn-magazine/2019/march/net-parse-the-command-line-with-system-commandline
 	
-	await Demos.one_helloCommandLine();
-	await Demos.two_complexType();
-	await Demos.three_typesWithStringConstructor();
+	//await Demos.one_helloCommandLine();
+	//await Demos.two_complexType();
+	//await Demos.three_typesWithStringConstructor();
+	await Demos.four_moreComplex();
+	await Demos.five_methodFirstApproach();
 	
 }
 
@@ -32,7 +36,7 @@ public static class Demos
 			};
 
 		command.Handler = CommandHandler.Create(
-			(string aString, int anInt, System.IO.FileAttributes anEnum, bool aBool, string[] items, int anIntWithAliases ) =>
+			(string aString, int anInt, System.IO.FileAttributes anEnum, bool aBool, string[] items, int anIntWithAliases) =>
 			{
 				var itemString = items.Aggregate(new StringBuilder(), (a, b) => a.Append(", " + b));
 				$"{aString}, {anInt}, {anEnum}, {aBool}, items: {itemString} aliased int: {anIntWithAliases}".Dump("One: hello");
@@ -41,7 +45,7 @@ public static class Demos
 
 		// await command.InvokeAsync("[debug] --a-bool true --a-string \"Hello world!\" --an-enum compressed --items first second third --an-int 423 cat 99999");  // if you run this one, you can attach a debugger to the console!! 
 		// await command.InvokeAsync("[parse] --a-bool true --a-string \"Hello world!\" --an-enum compressed --items first second third --an-int 423 cat 99999");  // if you run this one, you can displays a preview of how tokens are parsed
-		
+
 		await command.InvokeAsync(" --a-bool true --a-string \"Hello world!\" --an-enum compressed --items first second third --an-int 423 cat 99999");
 	}
 
@@ -53,11 +57,11 @@ public static class Demos
 				new Option(new []{"--an-int","b"}, "This is the int description") { Argument = new Argument<int>() }
 			};
 
-		 command.Handler = CommandHandler.Create(
-        (ComplexType complexType) =>
-		{
-			$"string: {complexType.AString}, int: {complexType.AnInt}".Dump("Two (aliased): complex type");
-		});
+		command.Handler = CommandHandler.Create(
+	   (ComplexType complexType) =>
+	   {
+		   $"string: {complexType.AString}, int: {complexType.AnInt}".Dump("Two (aliased): complex type");
+	   });
 		await command.InvokeAsync("--an-int 423 --a-string \"Hello world!\" ");
 		await command.InvokeAsync("-b 423 -a \"Hello world 2!\" ");
 	}
@@ -79,10 +83,50 @@ public static class Demos
 
 		var currentFolder = $"{Path.GetDirectoryName(Util.CurrentQueryPath)}";
 		await command.InvokeAsync($"-d {currentFolder} --custom-object-message \"hello how are you today?\"");
-		
-		
+
+
 		//await command.InvokeAsync(@"-d c://temp/");
 	}
+
+
+	/// <summary>https://docs.microsoft.com/en-us/archive/msdn-magazine/2019/march/net-parse-the-command-line-with-system-commandline#making-the-complex-possible</summary>
+	public static async Task four_moreComplex()
+	{
+
+		// todo. Add sub commands. 
+		var rootCommand = new RootCommand() { Description = "Converts an image file from one format to another.", TreatUnmatchedTokensAsErrors = true};
+		var nameOption = new Option(aliases: new string[] { "--name", "-n" }) { Description = "Your Name.", Argument = new Argument<string>() };
+		rootCommand.AddOption(nameOption);
+
+		var ageOption = new Option(aliases: new string[] { "--age", "-a" }) { Description = "Your Age", Argument = new Argument<int>() };
+		rootCommand.AddOption(ageOption);
+
+		rootCommand.Handler = CommandHandler.Create<string, int>(Convert);
+
+		var r = await rootCommand.InvokeAsync("-n damien -a 46");
+	}
+
+	static public void Convert(string name, int age)
+	{
+		$"{name} {age}".Dump("Four: more complex");
+	}
+
+
+	public static async Task five_methodFirstApproach()
+	{
+		var rootCommand = new RootCommand() { Description = "Converts an image file from one format to another.", TreatUnmatchedTokensAsErrors = false};
+		var method = typeof(Demos).GetMethod(nameof(AddFour));
+		
+ 		//rootCommand.Handler =  HandlerDescriptor.FromMethodInfo(method).GetCommandHandler();
+		rootCommand.ConfigureFromMethod(method);
+		rootCommand.Aliases.Dump();
+		//rootCommand.Arguments. ["--first"].
+		//rootCommand.Children["--output"].AddAlias("-o");
+		await rootCommand.InvokeAsync("--label damien --first 10 --second 20 --third 30 --fourth 40");
+	}
+
+	static public void AddFour(string label, int first, int second, int third, int fourth) => $"{label}: {first+second+third+fourth}".Dump("Five: Method First");
+	
 
 }
 
@@ -93,13 +137,140 @@ public class ComplexType
 }
 
 public class MyCustomClass
-{ 
+{
 	public string Message { get; set; }
-	
+
 	public MyCustomClass(string message)
 	{
 		this.Message = message;
 	}
+}
+
+public static class Helpers
+{
+	internal static string BuildAlias(string parameterName)
+	{
+		if (String.IsNullOrWhiteSpace(parameterName))
+		{
+			throw new ArgumentException("Value cannot be null or whitespace.", nameof(parameterName));
+		}
+
+		return parameterName.Length > 1
+				   ? $"--{parameterName.ToKebabCase()}"
+				   : $"-{parameterName.ToLowerInvariant()}";
+	}
+
+
+	public static string BuildAlias(this IValueDescriptor descriptor)
+	{
+		if (descriptor == null)
+		{
+			throw new ArgumentNullException(nameof(descriptor));
+		}
+
+		return BuildAlias(descriptor.ValueName);
+	}
+
+
+	public static Option BuildOption(this ParameterDescriptor parameter)
+	{
+		var argument = new Argument
+		{
+			ArgumentType = parameter.ValueType
+		};
+
+		if (parameter.HasDefaultValue)
+		{
+			argument.SetDefaultValueFactory(parameter.GetDefaultValue);
+		}
+
+		var option = new Option(
+			parameter.BuildAlias(),
+			parameter.ValueName)
+		{
+			Argument = argument
+		};
+
+		return option;
+	}
+
+
+	private static readonly string[] _argumentParameterNames =
+			{
+			"arguments",
+			"argument",
+			"args"
+		};
+
+	public static IEnumerable<Option> BuildOptions(this MethodInfo method)
+	{
+		var descriptor = HandlerDescriptor.FromMethodInfo(method);
+
+		var omittedTypes = new[]
+						   {
+								   typeof(IConsole),
+								   typeof(InvocationContext),
+								   typeof(BindingContext),
+								   typeof(ParseResult),
+								   typeof(CancellationToken),
+							   };
+
+		foreach (var option in descriptor.ParameterDescriptors
+										 .Where(d => !omittedTypes.Contains(d.ValueType))
+										 .Where(d => !_argumentParameterNames.Contains(d.ValueName))
+										 .Select(p => p.BuildOption()))
+		{
+			yield return option;
+		}
+	}
+
+	public static void ConfigureFromMethod(
+		   this Command command,
+		   MethodInfo method,
+		   object target = null)
+	{
+		if (command == null)
+		{
+			throw new ArgumentNullException(nameof(command));
+		}
+
+		if (method == null)
+		{
+			throw new ArgumentNullException(nameof(method));
+		}
+
+		foreach (var option in method.BuildOptions())
+		{
+			command.AddOption(option);
+		}
+
+		if (method.GetParameters()
+				  .FirstOrDefault(p => _argumentParameterNames.Contains(p.Name)) is ParameterInfo argsParam)
+		{
+			var argument = new Argument
+			{
+				ArgumentType = argsParam.ParameterType,
+				Name = argsParam.Name
+			};
+
+			if (argsParam.HasDefaultValue)
+			{
+				if (argsParam.DefaultValue != null)
+				{
+					argument.SetDefaultValue(argsParam.DefaultValue);
+				}
+				else
+				{
+					argument.SetDefaultValueFactory(() => null);
+				}
+			}
+
+			command.AddArgument(argument);
+		}
+
+		command.Handler = CommandHandler.Create(method, target);
+	}
+
 }
 
 
