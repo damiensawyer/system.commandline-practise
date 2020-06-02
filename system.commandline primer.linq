@@ -1,10 +1,10 @@
 <Query Kind="Program">
   <NuGetReference Prerelease="true">System.CommandLine</NuGetReference>
-  <Namespace>System.Threading.Tasks</Namespace>
   <Namespace>System.CommandLine</Namespace>
-  <Namespace>System.CommandLine.Invocation</Namespace>
   <Namespace>System.CommandLine.Binding</Namespace>
+  <Namespace>System.CommandLine.Invocation</Namespace>
   <Namespace>System.CommandLine.Parsing</Namespace>
+  <Namespace>System.Threading.Tasks</Namespace>
 </Query>
 
 async Task Main()
@@ -95,11 +95,8 @@ public static class Demos
 
 		// todo. Add sub commands. 
 		var rootCommand = new RootCommand() { Description = "Converts an image file from one format to another.", TreatUnmatchedTokensAsErrors = true};
-		var nameOption = new Option(aliases: new string[] { "--name", "-n" }) { Description = "Your Name.", Argument = new Argument<string>() };
-		rootCommand.AddOption(nameOption);
-
-		var ageOption = new Option(aliases: new string[] { "--age", "-a" }) { Description = "Your Age", Argument = new Argument<int>() };
-		rootCommand.AddOption(ageOption);
+		rootCommand.AddOption(new Option(aliases: new string[] { "--name", "-n" }) { Description = "Your Name.", Argument = new Argument<string>() });
+		rootCommand.AddOption(new Option(aliases: new string[] { "--age", "-a" }) { Description = "Your Age", Argument = new Argument<int>() });
 
 		rootCommand.Handler = CommandHandler.Create<string, int>(Convert);
 
@@ -114,17 +111,22 @@ public static class Demos
 
 	public static async Task five_methodFirstApproach()
 	{
-		var rootCommand = new RootCommand() { Description = "Converts an image file from one format to another.", TreatUnmatchedTokensAsErrors = false};
+		var rootCommand = new RootCommand() { Description = "Converts an image file from one format to another.", TreatUnmatchedTokensAsErrors = true};
 		var method = typeof(Demos).GetMethod(nameof(AddFour));
-		
- 		//rootCommand.Handler =  HandlerDescriptor.FromMethodInfo(method).GetCommandHandler();
 		rootCommand.ConfigureFromMethod(method);
-		rootCommand.Aliases.Dump();
-		//rootCommand.Arguments. ["--first"].
+		//rootCommand.Children["--input"].AddAlias("-i"); // I couldn't get this to work. 
 		//rootCommand.Children["--output"].AddAlias("-o");
-		await rootCommand.InvokeAsync("--label damien --first 10 --second 20 --third 30 --fourth 40");
+		await rootCommand.InvokeAsync("--label damien --first 10 --second 20 --third 30 --fourth 45");
 	}
 
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <param name="label">this is a label</param>
+	/// <param name="first">number 1</param>
+	/// <param name="second">number 2</param>
+	/// <param name="third">number 3</param>
+	/// <param name="fourth">number 4</param>
 	static public void AddFour(string label, int first, int second, int third, int fourth) => $"{label}: {first+second+third+fourth}".Dump("Five: Method First");
 	
 
@@ -148,6 +150,7 @@ public class MyCustomClass
 
 public static class Helpers
 {
+	// these are all from <PackageReference Include="System.CommandLine.DragonFruit" Version="0.3.0-alpha.20253.1" />
 	internal static string BuildAlias(string parameterName)
 	{
 		if (String.IsNullOrWhiteSpace(parameterName))

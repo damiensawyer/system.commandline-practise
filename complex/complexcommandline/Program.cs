@@ -7,10 +7,20 @@ using System.Threading.Tasks;
 
 namespace complexcommandline
 {
+    public static class asdasd
+    {
+        	static public void AddFour(string label, int first, int second, int third, int fourth)
+            {
+                var s = $"{label}: {first + second + third + fourth}";
+            }
+    }
+
     class Program
     {
         static async Task Main()
         {
+
+
             var command = new RootCommand
             {
                 new Option("--a-string") { Argument = new Argument<string>() },
