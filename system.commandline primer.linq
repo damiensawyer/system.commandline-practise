@@ -7,6 +7,9 @@
 
 async Task Main()
 {
+	// https://github.com/dotnet/command-line-api
+	// https://docs.microsoft.com/en-us/archive/msdn-magazine/2019/march/net-parse-the-command-line-with-system-commandline
+	
 	await Demos.one_helloCommandLine();
 	await Demos.two_complexType();
 	await Demos.three_typesWithStringConstructor();
@@ -36,23 +39,27 @@ public static class Demos
 
 			});
 
-		await command.InvokeAsync("--a-bool true --a-string \"Hello world!\" --an-enum compressed --items first second third --an-int 423 cat 99999");
+		// await command.InvokeAsync("[debug] --a-bool true --a-string \"Hello world!\" --an-enum compressed --items first second third --an-int 423 cat 99999");  // if you run this one, you can attach a debugger to the console!! 
+		// await command.InvokeAsync("[parse] --a-bool true --a-string \"Hello world!\" --an-enum compressed --items first second third --an-int 423 cat 99999");  // if you run this one, you can displays a preview of how tokens are parsed
+		
+		await command.InvokeAsync(" --a-bool true --a-string \"Hello world!\" --an-enum compressed --items first second third --an-int 423 cat 99999");
 	}
 
 	public static async Task two_complexType()
 	{
 		var command = new RootCommand
 			{
-				new Option("--a-string") { Argument = new Argument<string>() },
-				new Option("--an-int") { Argument = new Argument<int>() }
+				new Option(new []{"--a-string","a"}, "This is the string description") { Argument = new Argument<string>() }, // make a mistake on the parameter string you pass in and you see these descriptions et al.
+				new Option(new []{"--an-int","b"}, "This is the int description") { Argument = new Argument<int>() }
 			};
 
 		 command.Handler = CommandHandler.Create(
         (ComplexType complexType) =>
 		{
-			$"string: {complexType.AString}, int: {complexType.AnInt}".Dump("Two: complex type");
+			$"string: {complexType.AString}, int: {complexType.AnInt}".Dump("Two (aliased): complex type");
 		});
 		await command.InvokeAsync("--an-int 423 --a-string \"Hello world!\" ");
+		await command.InvokeAsync("-b 423 -a \"Hello world 2!\" ");
 	}
 
 	public static async Task three_typesWithStringConstructor()
@@ -72,6 +79,7 @@ public static class Demos
 
 		var currentFolder = $"{Path.GetDirectoryName(Util.CurrentQueryPath)}";
 		await command.InvokeAsync($"-d {currentFolder} --custom-object-message \"hello how are you today?\"");
+		
 		
 		//await command.InvokeAsync(@"-d c://temp/");
 	}
@@ -93,3 +101,12 @@ public class MyCustomClass
 		this.Message = message;
 	}
 }
+
+
+
+/* 
+Some extra notes:
+- One of my favorite features is support for tab completion, which end users can opt into by running a command to activate it (see bit.ly/2sSRsQq). This is an opt-in scenario because users tend to be protective of implicit changes to the shell. Tab completion for options and command names happens automatically, but there’s also tab completion for arguments via suggestions. When configuring a command or option, the tab completion values can come from a static list of values, such as the q, m, n, d or diagnostic values of --verbosity. Or they can be dynamically provided at run time, such as from REST invocation that returns a list of available NuGet packages when the argument is a NuGet reference.
+
+
+*/
